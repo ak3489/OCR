@@ -32,6 +32,15 @@
   }
   h1 { font-size: 22px; margin: 0 0 4px; }
   header p { color: var(--muted); margin: 0; font-size: 14px; }
+  #model-info { margin-top: 8px; font-size: 12px; }
+  #model-info code {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1px 7px;
+    color: var(--accent);
+    font-family: Consolas, monospace;
+  }
   main { max-width: 1100px; margin: 0 auto; padding: 16px 24px 80px; }
 
   #drop {
@@ -143,6 +152,7 @@
 <header>
   <h1>OCR 图片文字识别</h1>
   <p>拖入或选择图片，自动识别中文/英文文字，可复制或导出为 txt。</p>
+  <p id="model-info" class="model-info"></p>
 </header>
 <main>
   <div id="drop">
@@ -311,6 +321,17 @@ clearBtn.addEventListener('click', () => {
 });
 
 render();
+
+const modelInfoEl = document.getElementById('model-info');
+fetch('/api/model')
+  .then(r => r.json())
+  .then(m => {
+    let s = `当前模型（语言 <code>${m.lang}</code>，版本 <code>${m.ocr_version}</code>）：` +
+            `检测 <code>${m.det}</code> · 识别 <code>${m.rec}</code>`;
+    if (m.orient) s += ` · 方向 <code>${m.orient}</code>`;
+    modelInfoEl.innerHTML = s;
+  })
+  .catch(() => {});
 </script>
 </body>
 </html>

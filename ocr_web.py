@@ -14,15 +14,65 @@ from paddleocr import PaddleOCR
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
 
+# ==================== 模型配置区 ====================
+# 留空的项 = 用 paddleocr 当前版本的默认模型。想换模型时填模型名即可，例如：
+# DET_MODEL = "PP-OCRv5_server_det"
+# REC_MODEL = "PP-OCRv5_server_rec"
+LANG = 'ch'          # 语言，见 README
+OCR_VERSION = None   # None=默认(最新)，也可填 'PP-OCRv5' / 'PP-OCRv4' / 'PP-OCRv3'
+DET_MODEL = ''       # 文字检测模型名，留空用默认
+REC_MODEL = ''       # 文字识别模型名，留空用默认
+ORIENT_MODEL = ''    # 文字方向分类模型名，留空用默认
+# 也可用本地模型目录（离线/自制模型），填写后优先于上面的模型名
+DET_MODEL_DIR = ''   # 例: r"D:\models\my_det"
+REC_MODEL_DIR = ''   # 例: r"D:\models\my_rec"
+ORIENT_MODEL_DIR = ''  # 例: r"D:\models\my_orient"
+# ====================================================
+
 app = FastAPI(title="OCR 网页版")
 
-ocr = PaddleOCR(
+_ocr_kwargs = dict(
     use_doc_orientation_classify=False,
     use_doc_unwarping=False,
     use_textline_orientation=True,
-    lang='ch',
+    lang=LANG,
     enable_mkldnn=False,
 )
+if OCR_VERSION:
+    _ocr_kwargs['ocr_version'] = OCR_VERSION
+if DET_MODEL:
+    _ocr_kwargs['text_detection_model_name'] = DET_MODEL
+if REC_MODEL:
+    _ocr_kwargs['text_recognition_model_name'] = REC_MODEL
+if ORIENT_MODEL:
+    _ocr_kwargs['textline_orientation_model_name'] = ORIENT_MODEL
+if DET_MODEL_DIR:
+    _ocr_kwargs['text_detection_model_dir'] = DET_MODEL_DIR
+if REC_MODEL_DIR:
+    _ocr_kwargs['text_recognition_model_dir'] = REC_MODEL_DIR
+if ORIENT_MODEL_DIR:
+    _ocr_kwargs['textline_orientation_model_dir'] = ORIENT_MODEL_DIR
+
+ocr = PaddleOCR(**_ocr_kwargs)
+
+
+def resolve_model_info() -> dict:
+    """返回当前实际使用的模型信息，用于网页展示。"""
+    try:
+        det, rec = ocr._get_ocr_model_names(LANG, OCR_VERSION)
+    except Exception:
+        det, rec = None, None
+    det = DET_MODEL or det or '默认'
+    rec = REC_MODEL or rec or '默认'
+    info = {
+        "lang": LANG,
+        "ocr_version": OCR_VERSION or "默认(最新)",
+        "det": det,
+        "rec": rec,
+    }
+    if ORIENT_MODEL:
+        info["orient"] = ORIENT_MODEL
+    return info
 
 img_exts = {'.jpg', '.jpeg', '.png', '.bmp', '.tif', '.tiff', '.webp'}
 
@@ -51,6 +101,11 @@ def index():
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/api/model")
+def api_model():
+    return resolve_model_info()
 
 
 @app.post("/api/ocr")

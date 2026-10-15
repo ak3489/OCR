@@ -197,7 +197,69 @@ npm start
 
 ---
 
-## 五、常见问题
+## 五、升级 / 更换模型
+
+> 网页顶部会显示**当前正在使用的模型**（检测 / 识别模型名、语言、版本），来自接口 `GET /api/model`。
+
+默认模型随 `paddleocr` 包版本走，当前装的是 3.7.0，默认：
+
+- 检测：`PP-OCRv6_medium_det`
+- 识别：`PP-OCRv6_medium_rec`
+- 方向：`PP-LCNet_x1_0_textline_ori`
+
+### 方式 1：升级依赖包（最省事，推荐）
+
+新版本包会把默认模型升级到更新的版本（例如以后出 PP-OCRv7）：
+
+```powershell
+python -m pip install -U paddleocr paddlepaddle
+```
+
+代码不用改，重启后 `pip` 装的版本决定默认模型。
+
+### 方式 2：指定模型名（不用升级包）
+
+修改 `ocr_web.py` 顶部的「模型配置区」，填上模型名即可：
+
+```python
+LANG = 'ch'
+OCR_VERSION = None          # 也可填 'PP-OCRv5' / 'PP-OCRv4' / 'PP-OCRv3'
+DET_MODEL = "PP-OCRv5_server_det"     # 留空用默认
+REC_MODEL = "PP-OCRv5_server_rec"     # 留空用默认
+ORIENT_MODEL = ""                     # 留空用默认
+```
+
+当前 3.7.0 内置可选的模型名：
+
+| 类型 | 可选模型 |
+|------|---------|
+| 检测 | `PP-OCRv6_medium_det`、`PP-OCRv5_server_det`、`PP-OCRv5_mobile_det`、`PP-OCRv4_mobile_det`、`PP-OCRv3_mobile_det` |
+| 识别 | `PP-OCRv6_medium_rec`、`PP-OCRv5_server_rec`、`PP-OCRv5_mobile_rec`、`PP-OCRv4_mobile_rec`、`PP-OCRv3_mobile_rec` |
+
+- `server` 版更准但更慢、体积更大；`mobile` / `medium` 更快。
+- 用新模型名后，首次运行会自动下载对应模型。
+- 想用**更新的模型名**（包里还不认识）时，先按方式 1 升级包。
+
+### 方式 3：使用本地模型目录
+
+从 [AI Studio PaddleOCR](https://aistudio.baidu.com/paddleocr) 下载模型，或用 `paddle2onnx` 等转换后，在 `ocr_web.py` 配置区填本地目录（**优先于模型名**）：
+
+```python
+DET_MODEL_DIR = r"D:\models\my_det"
+REC_MODEL_DIR = r"D:\models\my_rec"
+ORIENT_MODEL_DIR = ""   # 可留空
+```
+
+适合离线部署或自己微调的模型。
+
+### 注意事项
+
+- 换模型后旧模型不会自动删除，可手动清理 `C:\Users\<你>\.paddlex\official_models\`。
+- 模型越大越准，但内存和耗时也越高，按机器性能取舍。
+
+---
+
+## 六、常见问题
 
 - **端口被占用**：改 `ocr_web.py` 里的 `port=8000`，或用 `uvicorn ocr_web:app --port 9000`。
 - **识别慢**：CPU 识别单张约 1~3 秒，属正常；高并发请参考「服务器注意事项」。
