@@ -27,13 +27,32 @@ F:\OCR\
 
 ## 二、本地运行
 
+### 0. 前置条件（重要）
+
+从 git 克隆下来后，**必须先安装依赖**，否则 `python ocr.py` 会报 `ModuleNotFoundError: No module named 'paddleocr'`。
+
+```powershell
+# 在项目目录下执行，安装全部依赖
+python -m pip install -r requirements.txt
+```
+
+依赖说明：
+
+- `paddleocr` + `paddlepaddle`：OCR 识别引擎（命令行版和网页版都需要）。
+- `fastapi`、`uvicorn`、`python-multipart`：仅网页版需要。
+- 要求 Python 3.9 ~ 3.12。
+
+> 如果只想跑命令行版，也可只装引擎：`python -m pip install paddleocr paddlepaddle`。
+
 ### 1. 命令行版
 
 ```powershell
 python ocr.py
 ```
 
-把图片放进 `F:\OCR` 目录，运行后生成 `全部结果.txt`。
+- 默认读取**脚本所在目录**下的图片（不再是写死的路径），识别后生成 `全部结果.txt`。
+- 也可指定图片目录：`python ocr.py D:\我的图片`
+- 若未安装依赖，脚本会直接提示：`缺少依赖，请先安装：python -m pip install -r requirements.txt`。
 
 ### 2. 网页版（推荐，中文准确率最高）
 

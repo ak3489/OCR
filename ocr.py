@@ -1,9 +1,15 @@
 import os
 os.environ['FLAGS_enable_pir_api'] = '0'
 
-from paddleocr import PaddleOCR
+import sys
 from pathlib import Path
 import re
+
+try:
+    from paddleocr import PaddleOCR
+except ImportError:
+    print('缺少依赖，请先安装：python -m pip install -r requirements.txt')
+    sys.exit(1)
 
 # ==================== 配置区 ====================
 # 如果想把所有结果写到同一个文件，请填写文件名，例如：
@@ -26,7 +32,9 @@ ocr = PaddleOCR(
     enable_mkldnn=False
 )
 
-work_dir = Path(r'F:\OCR')
+work_dir = Path(__file__).resolve().parent
+if len(sys.argv) > 1:
+    work_dir = Path(sys.argv[1]).resolve()
 img_exts = {'.jpg', '.jpeg', '.png', '.bmp', '.tif', '.tiff', '.webp'}
 
 # 先收集所有图片，再按数字顺序排序
