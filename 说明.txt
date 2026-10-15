@@ -1,0 +1,3 @@
+python ocr.py
+
+python ocr_web.py 
