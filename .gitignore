@@ -37,6 +37,9 @@ pnpm-debug.log*
 *.webp
 *.gif
 
+# 例外：README 里展示的界面截图需要提交
+!docs/index.png
+
 # ---- 编辑器 / IDE ----
 .vscode/
 .idea/

@@ -1,10 +1,10 @@
-![OCR 界面预览](index.png)
+![OCR 界面预览](docs/index.png)
 
 # OCR 图片文字识别
 
 批量识别图片中的文字（中文 / 英文），支持两种用法：
 
-- **命令行版**：`ocr.py`，读取 `F:\OCR` 目录下的图片，结果写入 `全部结果.txt`。
+- **命令行版**：`ocr.py`，读取脚本所在目录（或指定目录）的图片，结果写入 `全部结果.txt`。
 - **网页版**：`ocr_web.py`，浏览器里拖拽上传图片即可识别、复制、导出（本 README 重点）。
 
 识别引擎使用 [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR)（PP-OCRv6 模型）。
@@ -18,6 +18,8 @@ F:\OCR\
 ├─ ocr.py              # 原命令行脚本
 ├─ ocr_web.py          # 网页版后端（FastAPI + PaddleOCR）
 ├─ requirements.txt    # Python 依赖
+├─ docs\
+│   └─ index.png       # 网页界面截图（用于 README 展示）
 ├─ static\
 │   └─ index.html      # 网页前端（上传、结果展示、导出）
 └─ node-version\       # Node 替代方案（Tesseract.js，可选）
