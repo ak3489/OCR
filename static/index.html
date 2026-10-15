@@ -71,6 +71,24 @@
 
   #status { color: var(--muted); font-size: 13px; margin-left: auto; }
 
+  #name-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  #filename {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 8px 10px;
+    font-size: 14px;
+    width: 150px;
+  }
+  #filename:focus { outline: none; border-color: var(--accent); }
+
   .card {
     background: var(--panel);
     border: 1px solid var(--border);
@@ -135,6 +153,9 @@
 
   <div id="toolbar">
     <button id="run" disabled>开始识别</button>
+    <label id="name-field">文件名
+      <input id="filename" type="text" value="全部结果" placeholder="导出文件名" title="导出 txt 的文件名">
+    </label>
     <button id="export" class="ghost" disabled>导出全部 txt</button>
     <button id="clear" class="ghost" disabled>清空</button>
     <span id="status">未选择图片</span>
@@ -151,6 +172,7 @@ const runBtn = document.getElementById('run');
 const exportBtn = document.getElementById('export');
 const clearBtn = document.getElementById('clear');
 const statusEl = document.getElementById('status');
+const filenameInput = document.getElementById('filename');
 
 let items = [];
 
@@ -263,7 +285,9 @@ function exportAll() {
   const blob = new Blob([parts.join('\n')], { type: 'text/plain;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = '全部结果.txt';
+  let name = (filenameInput.value || '').trim().replace(/[\\/:*?"<>|]/g, '_');
+  if (!name) name = '全部结果';
+  a.download = name.replace(/\.txt$/i, '') + '.txt';
   a.click();
   URL.revokeObjectURL(a.href);
 }
