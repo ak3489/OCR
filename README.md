@@ -68,7 +68,13 @@ python -m pip install -r requirements.txt
 python ocr_web.py
 ```
 
-浏览器打开 <http://localhost:8000> ，拖入图片 → 点击「开始识别」→ 复制或「导出全部 txt」。
+浏览器打开 <http://localhost:8000> ，支持三种导入方式：
+
+- **拖拽** 图片到虚线框；
+- **点击选择** 本地图片（可多选）；
+- **Ctrl+V 粘贴**（截图 `Win+Shift+S` 后直接粘贴，无需先存文件；可反复粘贴累积多张）。
+
+导入后点「开始识别」，再复制或「导出全部 txt」。
 
 > 首次运行会自动下载 PP-OCR 模型（约几十 MB）到 `C:\Users\<你>\.paddlex\official_models\`，之后离线可用。
 
@@ -264,4 +270,5 @@ ORIENT_MODEL_DIR = ""   # 可留空
 - **端口被占用**：改 `ocr_web.py` 里的 `port=8000`，或用 `uvicorn ocr_web:app --port 9000`。
 - **识别慢**：CPU 识别单张约 1~3 秒，属正常；高并发请参考「服务器注意事项」。
 - **模型下载失败**：手动下载模型放到 `C:\Users\<你>\.paddlex\official_models\` 对应目录即可离线。
+- **临时文件**：上传/粘贴的图片只写入系统临时目录，识别后在 `finally` 里立即删除，不会残留；进程启动时还会再清理一次可能遗留的 `ocr_*` 临时文件。
 - **换语言**：`ocr_web.py` 里 `PaddleOCR(lang='ch')` 可改成 `en`、`japan`、`korean` 等。

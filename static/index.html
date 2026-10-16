@@ -156,8 +156,8 @@
 </header>
 <main>
   <div id="drop">
-    <div>把图片拖到这里，或 <strong>点击选择</strong></div>
-    <small>支持 jpg / png / bmp / tif / webp，可多选、可批量</small>
+    <div>把图片拖到这里、<strong>点击选择</strong>，或按 <strong>Ctrl+V 粘贴</strong></div>
+    <small>支持 jpg / png / bmp / tif / webp，可多选、可批量、可重复粘贴</small>
     <input id="picker" type="file" accept="image/*" multiple hidden>
   </div>
 
@@ -244,21 +244,57 @@ function render() {
   setStatus();
 }
 
-function addFiles(files) {
+let pasteCounter = 0;
+
+function extFromType(type) {
+  const sub = (type || '').split('/')[1] || 'png';
+  if (sub === 'jpeg' || sub === 'jpg') return 'jpg';
+  return sub.replace(/\+xml$/, '');
+}
+
+function addFiles(files, pasted) {
   const added = [];
   for (const f of files) {
-    if (!f.type.startsWith('image/')) continue;
+    if (f.type && !f.type.startsWith('image/')) continue;
+    let name = f.name;
+    if (pasted || !name) {
+      pasteCounter += 1;
+      name = `粘贴图片-${pasteCounter}.${extFromType(f.type)}`;
+    }
     added.push({
-      name: f.name,
+      name: name,
       file: f,
       url: URL.createObjectURL(f),
       text: '',
       state: 'idle'
     });
   }
+  if (!added.length) return;
   added.sort(naturalCompare);
   items = items.concat(added).sort(naturalCompare);
   render();
+}
+
+function handlePaste(e) {
+  const data = e.clipboardData;
+  if (!data) return;
+  const files = [];
+  if (data.items) {
+    for (const it of data.items) {
+      if (it.kind === 'file' && it.type.startsWith('image/')) {
+        const f = it.getAsFile();
+        if (f) files.push(f);
+      }
+    }
+  }
+  if (!files.length && data.files) {
+    for (const f of data.files) {
+      if (f.type.startsWith('image/')) files.push(f);
+    }
+  }
+  if (!files.length) return; // 非图片，交给默认粘贴行为
+  e.preventDefault();
+  addFiles(files, true);
 }
 
 async function ocrOne(item) {
@@ -311,6 +347,7 @@ picker.addEventListener('change', () => { addFiles(picker.files); picker.value =
   e.preventDefault(); drop.classList.remove('drag');
 }));
 drop.addEventListener('drop', e => addFiles(e.dataTransfer.files));
+document.addEventListener('paste', handlePaste);
 
 runBtn.addEventListener('click', runAll);
 exportBtn.addEventListener('click', exportAll);

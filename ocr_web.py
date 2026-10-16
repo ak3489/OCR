@@ -80,6 +80,20 @@ img_exts = {'.jpg', '.jpeg', '.png', '.bmp', '.tif', '.tiff', '.webp'}
 ocr_lock = threading.Lock()
 
 
+def cleanup_temp_files():
+    """启动时清理上次进程异常退出可能残留的临时图片。"""
+    tmp_dir = Path(tempfile.gettempdir())
+    for p in tmp_dir.glob("ocr_*"):
+        if p.is_file():
+            try:
+                p.unlink()
+            except OSError:
+                pass
+
+
+cleanup_temp_files()
+
+
 def run_ocr(image_path: Path) -> list[str]:
     with ocr_lock:
         result = ocr.predict(str(image_path))
