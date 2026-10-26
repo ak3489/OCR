@@ -6,6 +6,7 @@
 <title>OCR 图片文字识别</title>
 <style>
   :root {
+    color-scheme: dark;
     --bg: #0f1115;
     --panel: #181b22;
     --panel-2: #20242d;
@@ -80,23 +81,24 @@
 
   #status { color: var(--muted); font-size: 13px; margin-left: auto; }
 
-  #name-field {
+  .field {
     display: inline-flex;
     align-items: center;
     gap: 6px;
     font-size: 13px;
     color: var(--muted);
   }
-  #filename {
+  #filename, #layout {
     background: var(--panel-2);
     border: 1px solid var(--border);
     border-radius: 8px;
     color: var(--text);
     padding: 8px 10px;
     font-size: 14px;
-    width: 150px;
+    cursor: pointer;
   }
-  #filename:focus { outline: none; border-color: var(--accent); }
+  #filename { width: 150px; cursor: text; }
+  #filename:focus, #layout:focus { outline: none; border-color: var(--accent); }
 
   .card {
     background: var(--panel);
@@ -163,8 +165,14 @@
 
   <div id="toolbar">
     <button id="run" disabled>开始识别</button>
-    <label id="name-field">文件名
+    <label class="field">文件名
       <input id="filename" type="text" value="全部结果" placeholder="导出文件名" title="导出 txt 的文件名">
+    </label>
+    <label class="field">排版
+      <select id="layout" title="识别结果的换行方式">
+        <option value="reflow">段落合并</option>
+        <option value="lines">按原图分行</option>
+      </select>
     </label>
     <button id="export" class="ghost" disabled>导出全部 txt</button>
     <button id="clear" class="ghost" disabled>清空</button>
@@ -183,8 +191,16 @@ const exportBtn = document.getElementById('export');
 const clearBtn = document.getElementById('clear');
 const statusEl = document.getElementById('status');
 const filenameInput = document.getElementById('filename');
+const layoutSelect = document.getElementById('layout');
 
 let items = [];
+let layout = layoutSelect.value;   // reflow = 段落合并，lines = 按原图分行
+
+function currentText(item) {
+  const edited = item.edits && item.edits[layout];
+  if (edited !== undefined) return edited;
+  return (layout === 'reflow' ? item.reflow : item.raw) || '';
+}
 
 function naturalCompare(a, b) {
   return a.name.localeCompare(b.name, 'zh', { numeric: true, sensitivity: 'base' });
@@ -221,9 +237,13 @@ function render() {
     h3.appendChild(badge);
 
     const ta = document.createElement('textarea');
-    ta.value = item.text || '';
+    ta.value = currentText(item);
     ta.placeholder = item.error || '识别结果会显示在这里';
-    ta.addEventListener('input', () => { item.text = ta.value; });
+    ta.addEventListener('input', () => {
+      item.edits = item.edits || {};
+      item.edits[layout] = ta.value;
+    });
+    item.ta = ta;
 
     const actions = document.createElement('div');
     actions.className = 'card-actions';
@@ -265,7 +285,9 @@ function addFiles(files, pasted) {
       name: name,
       file: f,
       url: URL.createObjectURL(f),
-      text: '',
+      raw: '',
+      reflow: '',
+      edits: {},
       state: 'idle'
     });
   }
@@ -299,7 +321,9 @@ function handlePaste(e) {
 
 async function ocrOne(item) {
   item.state = 'run';
-  item.text = '';
+  item.raw = '';
+  item.reflow = '';
+  item.edits = {};
   item.error = '';
   render();
   try {
@@ -309,7 +333,8 @@ async function ocrOne(item) {
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
     if (data.error) throw new Error(data.error);
-    item.text = data.text || '';
+    item.raw = data.text || '';
+    item.reflow = data.text_reflow !== undefined ? data.text_reflow : item.raw;
     item.state = 'ok';
   } catch (e) {
     item.state = 'err';
@@ -327,7 +352,7 @@ async function runAll() {
 function exportAll() {
   const parts = items
     .filter(i => i.state === 'ok')
-    .map(i => `===== ${i.name} =====\n${i.text}\n`);
+    .map(i => `===== ${i.name} =====\n${currentText(i)}\n`);
   const blob = new Blob([parts.join('\n')], { type: 'text/plain;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -351,6 +376,12 @@ document.addEventListener('paste', handlePaste);
 
 runBtn.addEventListener('click', runAll);
 exportBtn.addEventListener('click', exportAll);
+layoutSelect.addEventListener('change', () => {
+  layout = layoutSelect.value;
+  for (const item of items) {
+    if (item.ta) item.ta.value = currentText(item);
+  }
+});
 clearBtn.addEventListener('click', () => {
   items.forEach(i => URL.revokeObjectURL(i.url));
   items = [];

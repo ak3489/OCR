@@ -1,6 +1,8 @@
 import os
 os.environ['FLAGS_enable_pir_api'] = '0'
 
+import re
+import statistics
 import tempfile
 import threading
 import uuid
@@ -94,17 +96,55 @@ def cleanup_temp_files():
 cleanup_temp_files()
 
 
-def run_ocr(image_path: Path) -> list[str]:
+def run_ocr(image_path: Path) -> list[tuple[str, list[float] | None]]:
+    """识别图片，返回 (文本, 行框[x1,y1,x2,y2]) 列表，按阅读顺序。"""
     with ocr_lock:
         result = ocr.predict(str(image_path))
-    texts = []
+    lines = []
     for res in result:
         data = res.json if hasattr(res, 'json') else res
-        if isinstance(data, dict):
-            for text in data.get('res', {}).get('rec_texts', []):
-                if text and str(text).strip():
-                    texts.append(str(text).strip())
-    return texts
+        if not isinstance(data, dict):
+            continue
+        res_data = data.get('res', {})
+        texts = res_data.get('rec_texts', [])
+        boxes = res_data.get('rec_boxes') or []
+        for i, text in enumerate(texts):
+            text = str(text).strip()
+            if not text:
+                continue
+            box = boxes[i] if i < len(boxes) else None
+            lines.append((text, [float(v) for v in box] if box is not None else None))
+    return lines
+
+
+_ASCII_TAIL = re.compile(r'[0-9A-Za-z]$')
+_ASCII_HEAD = re.compile(r'^[0-9A-Za-z]')
+
+
+def merge_paragraphs(lines: list[tuple[str, list[float]]]) -> str:
+    """按行框位置把逐行结果接排成段落：段内不断行，段间换行。
+
+    判为段落边界的依据：行首缩进、行距突增、上一行明显没写到右边距。
+    """
+    gaps = [max(0.0, b[1] - a[3]) for (_, a), (_, b) in zip(lines, lines[1:])]
+    med_gap = statistics.median(gaps) if gaps else 0.0
+    right = max(box[2] for _, box in lines)
+
+    out = lines[0][0]
+    prev = lines[0][1]
+    for text, box in lines[1:]:
+        h = max(1.0, min(prev[3] - prev[1], box[3] - box[1]))
+        if abs(box[1] - prev[1]) < 0.5 * h:  # 同一行被切成多块
+            out += (" " if box[0] - prev[2] > h else "") + text
+        elif (box[0] - prev[0] > h                     # 行首缩进
+              or box[1] - prev[3] > med_gap + 0.5 * h  # 行距突增
+              or prev[2] < right - 2.5 * h):           # 上一行明显没写满
+            out += "\n" + text
+        else:
+            sep = " " if _ASCII_TAIL.search(out) and _ASCII_HEAD.match(text) else ""
+            out += sep + text
+        prev = box
+    return out
 
 
 @app.get("/")
@@ -131,14 +171,21 @@ async def api_ocr(file: UploadFile = File(...)):
     tmp_path = Path(tempfile.gettempdir()) / f"ocr_{uuid.uuid4().hex}{suffix}"
     tmp_path.write_bytes(await file.read())
     try:
-        texts = run_ocr(tmp_path)
+        lines = run_ocr(tmp_path)
     finally:
         tmp_path.unlink(missing_ok=True)
 
+    raw = "\n".join(text for text, _ in lines)
+    if lines and all(box for _, box in lines):
+        reflow = merge_paragraphs(lines)
+    else:
+        reflow = raw
+
     return {
         "filename": file.filename,
-        "text": "\n".join(texts) if texts else "未识别到文字",
-        "count": len(texts),
+        "text": raw or "未识别到文字",
+        "text_reflow": reflow or "未识别到文字",
+        "count": len(lines),
     }
 
 
